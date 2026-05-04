@@ -302,7 +302,14 @@ export default function Orders() {
                   <input type="checkbox" checked={selected.includes(order.id)} onChange={() => toggleSelect(order.id)} className="accent-orange-500" />
                 </td>
                 <td className="p-3 text-orange-500 font-mono text-xs">{order.system_id}</td>
-                <td className="p-3 text-neutral-700 text-xs">{order.ref_id || <span className="text-neutral-400">-</span>}</td>
+                <td className={`p-3 text-xs ${order.is_duplicate_ref ? 'text-red-600 font-semibold' : 'text-neutral-700'}`}>
+                  {order.ref_id ? (
+                    <span title={order.is_duplicate_ref ? 'Ref ID duplicated across multiple orders' : ''}>
+                      {order.ref_id}
+                      {order.is_duplicate_ref && <span className="ml-1 text-[10px] uppercase tracking-wide">dup</span>}
+                    </span>
+                  ) : <span className="text-neutral-400">-</span>}
+                </td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[order.status]}`}>{STATUS_MAP[order.status]}</span>
                 </td>
