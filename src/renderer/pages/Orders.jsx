@@ -21,7 +21,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', ref_id: '', page: 1 });
+  const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', page: 1 });
   const [selected, setSelected] = useState([]);
   const { hasPermission, user: authUser } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +46,7 @@ export default function Orders() {
     const params = { page: filters.page, per_page: 20 };
     if (filters.status !== '') params.status = filters.status;
     if (filters.ref_id) params.ref_id = filters.ref_id;
+    if (filters.system_id) params.system_id = filters.system_id;
 
     api.get('/orders', { params }).then(res => {
       setOrders(res.data.data);
@@ -232,10 +233,17 @@ export default function Orders() {
         <form onSubmit={handleSearch} className="flex gap-2">
           <input
             type="text"
+            placeholder="Search system_id..."
+            value={filters.system_id}
+            onChange={e => setFilters(f => ({ ...f, system_id: e.target.value }))}
+            className="px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-800 text-sm focus:outline-none focus:border-orange-400 w-44 font-mono"
+          />
+          <input
+            type="text"
             placeholder="Search ref_id..."
             value={filters.ref_id}
             onChange={e => setFilters(f => ({ ...f, ref_id: e.target.value }))}
-            className="px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-800 text-sm focus:outline-none focus:border-orange-400 w-48"
+            className="px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-800 text-sm focus:outline-none focus:border-orange-400 w-44"
           />
           <button type="submit" className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm rounded-lg">Search</button>
         </form>
