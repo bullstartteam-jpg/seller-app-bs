@@ -21,7 +21,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', page: 1 });
+  const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', date_from: '', date_to: '', page: 1 });
   const [selected, setSelected] = useState([]);
   const { hasPermission, user: authUser } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +47,8 @@ export default function Orders() {
     if (filters.status !== '') params.status = filters.status;
     if (filters.ref_id) params.ref_id = filters.ref_id;
     if (filters.system_id) params.system_id = filters.system_id;
+    if (filters.date_from) params.date_from = filters.date_from;
+    if (filters.date_to) params.date_to = filters.date_to;
 
     api.get('/orders', { params }).then(res => {
       setOrders(res.data.data);
@@ -54,7 +56,7 @@ export default function Orders() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchOrders(); refreshUnpaidBanner(); }, [filters.page, filters.status]);
+  useEffect(() => { fetchOrders(); refreshUnpaidBanner(); }, [filters.page, filters.status, filters.date_from, filters.date_to]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -67,6 +69,34 @@ export default function Orders() {
     await api.post('/orders/bulk-status', { order_ids: selected, status });
     setSelected([]);
     fetchOrders();
+  };
+
+  const handleExport = async () => {
+    const params = {};
+    if (filters.status !== '') params.status = filters.status;
+    if (filters.ref_id) params.ref_id = filters.ref_id;
+    if (filters.system_id) params.system_id = filters.system_id;
+    if (filters.date_from) params.date_from = filters.date_from;
+    if (filters.date_to) params.date_to = filters.date_to;
+    if (selected.length > 0) params.order_ids = selected.join(',');
+    try {
+      const res = await api.get('/orders/export', { params, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.download = `orders_${selected.length > 0 ? `selected_${selected.length}_` : ''}${stamp}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      notify(
+        selected.length > 0
+          ? `Exported ${selected.length} selected order(s)`
+          : 'Exported orders matching current filters',
+        { title: 'Export', kind: 'success' }
+      );
+    } catch (err) {
+      notify(err.response?.data?.message || 'Export failed', { title: 'Export failed', kind: 'error' });
+    }
   };
 
   const handleBulkPay = async () => {
@@ -188,6 +218,13 @@ export default function Orders() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-neutral-800">Orders</h2>
         <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 text-sm rounded-lg transition-colors"
+            title={selected.length > 0 ? `Export ${selected.length} selected to CSV` : 'Export filtered orders to CSV'}
+          >
+            Export {selected.length > 0 ? `(${selected.length})` : 'CSV'}
+          </button>
           <button onClick={openPayAll} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg transition-colors">
             Pay All Unpaid
           </button>
@@ -256,6 +293,33 @@ export default function Orders() {
           <option value="">All Status</option>
           {STATUS_MAP.map((s, i) => <option key={i} value={i}>{s}</option>)}
         </select>
+
+        <div className="flex items-center gap-1 text-sm">
+          <span className="text-xs text-neutral-500">From</span>
+          <input
+            type="date"
+            value={filters.date_from}
+            onChange={e => setFilters(f => ({ ...f, date_from: e.target.value, page: 1 }))}
+            className="px-2 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-700 text-sm"
+          />
+          <span className="text-xs text-neutral-500 ml-1">To</span>
+          <input
+            type="date"
+            value={filters.date_to}
+            onChange={e => setFilters(f => ({ ...f, date_to: e.target.value, page: 1 }))}
+            className="px-2 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-700 text-sm"
+          />
+          {(filters.date_from || filters.date_to) && (
+            <button
+              type="button"
+              onClick={() => setFilters(f => ({ ...f, date_from: '', date_to: '', page: 1 }))}
+              className="px-2 py-1.5 text-xs text-neutral-500 hover:text-red-500"
+              title="Clear date range"
+            >
+              ✕
+            </button>
+          )}
+        </div>
 
         {selected.length > 0 && (
           <div className="flex gap-2 ml-auto">

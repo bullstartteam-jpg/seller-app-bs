@@ -25,6 +25,58 @@ export default function Wallet() {
   const [editForm, setEditForm] = useState({ amount: '', method: '', transaction_id: '', note: '' });
   const { user: authUser } = useAuth();
 
+  // VNPay deposit
+  const [showVnpay, setShowVnpay] = useState(false);
+  const [vnpayRate, setVnpayRate] = useState(null);    // {vnd_to_usd_rate, min_vnd}
+  const [vnpayVnd, setVnpayVnd] = useState('');
+  const [vnpayBusy, setVnpayBusy] = useState(false);
+
+  useEffect(() => {
+    api.get('/wallet/vnpay/rate').then(res => setVnpayRate(res.data)).catch(() => {});
+  }, []);
+
+  const usdPreview = (() => {
+    if (!vnpayRate || !vnpayVnd) return 0;
+    const vnd = parseFloat(vnpayVnd) || 0;
+    return Math.floor((vnd / vnpayRate.vnd_to_usd_rate) * 100) / 100;
+  })();
+
+  const startVnpay = async (e) => {
+    e?.preventDefault?.();
+    const vnd = parseFloat(vnpayVnd) || 0;
+    if (!vnpayRate) return;
+    if (vnd < vnpayRate.min_vnd) {
+      return notify(`Số tiền tối thiểu ${vnpayRate.min_vnd.toLocaleString()} ₫`, { title: 'VNPay', kind: 'error' });
+    }
+    setVnpayBusy(true);
+    try {
+      const res = await api.post('/wallet/vnpay/create', { vnd_amount: vnd });
+      const { payment_url } = res.data;
+      // Open VNPay page in user's default browser; IPN will credit the wallet.
+      if (window.electronAPI?.openExternal) {
+        await window.electronAPI.openExternal(payment_url);
+      } else {
+        window.open(payment_url, '_blank');
+      }
+      setShowVnpay(false);
+      setVnpayVnd('');
+      await notify('Đã mở trang thanh toán VNPay. Sau khi pay xong, ví sẽ tự cộng USD theo tỷ giá hiện tại.', {
+        title: 'VNPay', kind: 'success',
+      });
+      // Poll wallet a few times to pick up the IPN-credited deposit.
+      for (let i = 0; i < 6; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        refreshAll();
+      }
+    } catch (err) {
+      const errs = err.response?.data?.errors;
+      const msg = err.response?.data?.message || (errs ? Object.values(errs).flat().join('\n') : 'Error');
+      notify(msg, { title: 'VNPay failed', kind: 'error' });
+    } finally {
+      setVnpayBusy(false);
+    }
+  };
+
   const refreshAll = () => {
     api.get('/wallet/balance').then(res => setBalance(res.data));
     setLoading(true);
@@ -87,10 +139,77 @@ export default function Wallet() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-neutral-800">Wallet</h2>
-        <button onClick={() => setShowDeposit(!showDeposit)} className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg">
-          {showDeposit ? 'Cancel' : 'Request Deposit'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setShowVnpay(true); setShowDeposit(false); }}
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg"
+          >
+            Deposit qua VNPay
+          </button>
+          <button
+            onClick={() => { setShowDeposit(!showDeposit); setShowVnpay(false); }}
+            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg"
+          >
+            {showDeposit ? 'Cancel' : 'Manual Deposit'}
+          </button>
+        </div>
       </div>
+
+      {/* VNPay deposit form */}
+      {showVnpay && (
+        <div className="mb-4 bg-white rounded-xl border border-blue-200 p-5 shadow-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="text-base font-semibold text-blue-700">Deposit qua VNPay</h3>
+              <p className="text-xs text-neutral-500 mt-1">
+                Chuyển khoản qua VNPay (ATM / QR / Visa) → wallet tự cộng USD theo tỷ giá hiện tại.
+              </p>
+            </div>
+            <button onClick={() => setShowVnpay(false)} className="text-xs text-neutral-400 hover:text-neutral-700">✕</button>
+          </div>
+
+          {!vnpayRate ? (
+            <p className="text-sm text-neutral-500">Loading rate…</p>
+          ) : (
+            <form onSubmit={startVnpay} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-blue-50 rounded-lg p-2">
+                  <div className="text-xs text-blue-600">Tỷ giá hiện tại</div>
+                  <div className="font-semibold text-neutral-800">1 USD = {vnpayRate.vnd_to_usd_rate.toLocaleString()} ₫</div>
+                </div>
+                <div className="bg-neutral-50 rounded-lg p-2">
+                  <div className="text-xs text-neutral-500">Tối thiểu</div>
+                  <div className="font-semibold text-neutral-800">{vnpayRate.min_vnd.toLocaleString()} ₫</div>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500">Số tiền VND</label>
+                <input
+                  type="number"
+                  value={vnpayVnd}
+                  onChange={e => setVnpayVnd(e.target.value)}
+                  required
+                  min={vnpayRate.min_vnd}
+                  step="1000"
+                  placeholder="vd 500000"
+                  className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-base font-mono"
+                />
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
+                <span className="text-sm text-neutral-600">Wallet sẽ nhận</span>
+                <span className="font-extrabold text-emerald-700 text-2xl">${usdPreview.toFixed(2)}</span>
+              </div>
+              <button
+                type="submit"
+                disabled={vnpayBusy || !vnpayVnd}
+                className="w-full px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg"
+              >
+                {vnpayBusy ? 'Mở VNPay…' : 'Tiếp tục → mở VNPay'}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
 
       {/* Balance cards */}
       {balance && (
