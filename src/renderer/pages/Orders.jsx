@@ -21,7 +21,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', date_from: '', date_to: '', page: 1 });
+  const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', date_from: '', date_to: '', page: 1, per_page: 20 });
   const [selected, setSelected] = useState([]);
   const { hasPermission, user: authUser } = useAuth();
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ export default function Orders() {
 
   const fetchOrders = () => {
     setLoading(true);
-    const params = { page: filters.page, per_page: 20 };
+    const params = { page: filters.page, per_page: filters.per_page || 20 };
     if (filters.status !== '') params.status = filters.status;
     if (filters.ref_id) params.ref_id = filters.ref_id;
     if (filters.system_id) params.system_id = filters.system_id;
@@ -56,7 +56,7 @@ export default function Orders() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchOrders(); refreshUnpaidBanner(); }, [filters.page, filters.status, filters.date_from, filters.date_to]);
+  useEffect(() => { fetchOrders(); refreshUnpaidBanner(); }, [filters.page, filters.status, filters.date_from, filters.date_to, filters.per_page]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -320,6 +320,17 @@ export default function Orders() {
             </button>
           )}
         </div>
+
+        <select
+          value={filters.per_page}
+          onChange={e => setFilters(f => ({ ...f, per_page: parseInt(e.target.value), page: 1 }))}
+          className="px-2 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-700 text-sm"
+          title="Rows per page"
+        >
+          {[10, 20, 50, 100, 200, 500].map(n => (
+            <option key={n} value={n}>{n} / page</option>
+          ))}
+        </select>
 
         {selected.length > 0 && (
           <div className="flex gap-2 ml-auto">
