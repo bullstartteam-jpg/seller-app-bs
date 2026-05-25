@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 let mainWindow;
 
@@ -128,4 +129,34 @@ ipcMain.handle('open-external', (_event, url) => {
     return shell.openExternal(url);
   }
   return false;
+});
+
+// Upload an object directly to an S3-compatible bucket (Backblaze B2) from
+// the main process using credentials supplied by the renderer. Hub is not
+// involved — it only persists the resulting public URL afterward.
+ipcMain.handle('s3-upload', async (_event, { credentials, bucket, key, body, contentType }) => {
+  if (!credentials?.access_key_id || !credentials?.secret_access_key) {
+    throw new Error('Missing S3 credentials');
+  }
+  if (!bucket || !key) throw new Error('Missing bucket or key');
+
+  const client = new S3Client({
+    region: credentials.region || 'us-west-004',
+    endpoint: credentials.endpoint,
+    credentials: {
+      accessKeyId: credentials.access_key_id,
+      secretAccessKey: credentials.secret_access_key,
+    },
+    forcePathStyle: false,
+  });
+
+  await client.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: Buffer.from(body),
+    ContentType: contentType || 'application/octet-stream',
+    ACL: 'public-read',
+  }));
+
+  return { ok: true, key };
 });
