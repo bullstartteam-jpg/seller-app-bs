@@ -144,9 +144,19 @@ export default function OrderDetail() {
                   <span className="text-neutral-800 font-medium text-sm">{order.shipping_label || '-'}</span>
                 )}
               </div>
-              <Row label="Tracking ID" value={order.tracking_id || '-'} />
+              {order.ship_type === 'stamp' && (
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-neutral-500 text-sm">Proof (stamp)</span>
+                  {isPreviewable(order.proof_image) ? (
+                    <UrlPreview url={order.proof_image} onOpen={setPreviewUrl} label="Proof" size="sm" />
+                  ) : (
+                    <span className="text-neutral-800 font-medium text-sm">{order.proof_image || 'Chưa có'}</span>
+                  )}
+                </div>
+              )}
+              <Row label="Tracking ID" value={order.ship_type === 'stamp' ? 'No tracking (stamp)' : (order.tracking_id || '-')} />
               <Row label="Print Cost" value={`$${order.print_cost}`} />
-              <Row label="Shipping Cost" value={`$${order.shipping_cost}`} />
+              <Row label={order.ship_type === 'stamp' ? 'Handling Fee' : 'Shipping Cost'} value={`$${order.shipping_cost}`} />
               <Row label="Total Cost" value={`$${order.total_cost}`} />
               <Row label="Paid" value={`$${order.paid_cost}`} />
               <Row label="Created" value={new Date(order.created_at).toLocaleString()} />
