@@ -399,29 +399,6 @@ export default function OrderCreate() {
                     </div>
                   </div>
 
-                  {/* 🖼 Mockup */}
-                  <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
-                    <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🖼</span> Mockup</h5>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs text-neutral-500">Front</label>
-                          <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_front: url })} title="Upload mockup front to B2" />
-                        </div>
-                        <input value={item.mockup_front} onChange={e => updateItem(i, { mockup_front: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
-                        <UrlPreview url={item.mockup_front} onOpen={setPreviewUrl} label="Preview mockup front" />
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs text-neutral-500">Back</label>
-                          <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_back: url })} title="Upload mockup back to B2" />
-                        </div>
-                        <input value={item.mockup_back} onChange={e => updateItem(i, { mockup_back: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
-                        <UrlPreview url={item.mockup_back} onOpen={setPreviewUrl} label="Preview mockup back" />
-                      </div>
-                    </div>
-                  </div>
-
                   {/* 🧶 Material (chất liệu) — default auto-picked when variant chosen */}
                   {materialsOfVariant(item.product_variant_id).length > 0 && (
                     <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
@@ -499,6 +476,29 @@ export default function OrderCreate() {
                       )}
                     </div>
                   )}
+
+                  {/* 🖼 Mockup */}
+                  <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
+                    <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🖼</span> Mockup</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-neutral-500">Front</label>
+                          <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_front: url })} title="Upload mockup front to B2" />
+                        </div>
+                        <input value={item.mockup_front} onChange={e => updateItem(i, { mockup_front: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                        <UrlPreview url={item.mockup_front} onOpen={setPreviewUrl} label="Preview mockup front" />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-neutral-500">Back</label>
+                          <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_back: url })} title="Upload mockup back to B2" />
+                        </div>
+                        <input value={item.mockup_back} onChange={e => updateItem(i, { mockup_back: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                        <UrlPreview url={item.mockup_back} onOpen={setPreviewUrl} label="Preview mockup back" />
+                      </div>
+                    </div>
+                  </div>
 
                   {/* 🎨 Design — all 6 keys shown; leave empty to skip */}
                   <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
