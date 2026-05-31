@@ -27,16 +27,10 @@ export default function OrderCreate() {
     // row picks an accessory group + a tier-scoped style/price for it.
     accessories: [],
     mockup_front: '', mockup_back: '', quantity: '1', order_type: 0,
-    metas: [{ key: 'front', value: '' }],
+    // Always show all 6 design slots — user fills the ones they have, the
+    // rest stay empty and get filtered out before submit.
+    metas: META_KEYS.map(k => ({ key: k, value: '' })),
   });
-
-  const addMeta = (i) => {
-    setForm(f => {
-      const items = [...f.items];
-      items[i] = { ...items[i], metas: [...(items[i].metas || []), { key: 'front', value: '' }] };
-      return { ...f, items };
-    });
-  };
 
   const updateMeta = (i, mi, field, value) => {
     setForm(f => {
@@ -44,14 +38,6 @@ export default function OrderCreate() {
       const metas = [...(items[i].metas || [])];
       metas[mi] = { ...metas[mi], [field]: value };
       items[i] = { ...items[i], metas };
-      return { ...f, items };
-    });
-  };
-
-  const removeMeta = (i, mi) => {
-    setForm(f => {
-      const items = [...f.items];
-      items[i] = { ...items[i], metas: items[i].metas.filter((_, idx) => idx !== mi) };
       return { ...f, items };
     });
   };
@@ -164,7 +150,9 @@ export default function OrderCreate() {
           mockup_back: it.mockup_back,
           order_type: it.order_type,
           quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
-          metas: (it.metas || []).filter(m => m.key && m.key.trim() !== '').map(m => ({ key: m.key, value: m.value })),
+          metas: (it.metas || [])
+            .filter(m => m.key && m.key.trim() !== '' && m.value && String(m.value).trim() !== '')
+            .map(m => ({ key: m.key, value: m.value })),
         };
       }),
       force,
@@ -512,48 +500,32 @@ export default function OrderCreate() {
                     </div>
                   )}
 
-                  {/* 🎨 Design */}
+                  {/* 🎨 Design — all 6 keys shown; leave empty to skip */}
                   <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🎨</span> Design</h5>
-                      <button type="button" onClick={() => addMeta(i)} className="text-xs text-orange-500 hover:text-orange-600">+ Add Design</button>
+                    <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🎨</span> Design</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {(item.metas || []).map((m, mi) => (
+                        <div key={mi} className="flex items-center gap-2">
+                          <label className="text-xs font-medium text-neutral-500 w-14 capitalize shrink-0">{m.key}</label>
+                          <input
+                            type="text"
+                            value={m.value}
+                            onChange={e => updateMeta(i, mi, 'value', e.target.value)}
+                            placeholder="URL or Upload — empty = skip"
+                            className="flex-1 min-w-0 px-2 py-1.5 bg-[#faf8f6] border border-neutral-200 rounded text-neutral-800 text-xs"
+                          />
+                          <UploadButton
+                            folder={`metas/${m.key}`}
+                            accept="image/*"
+                            onUrl={(url) => updateMeta(i, mi, 'value', url)}
+                            title={`Upload ${m.key} design`}
+                          />
+                          {isPreviewable(m.value) && (
+                            <UrlPreview url={m.value} onOpen={setPreviewUrl} label={`Preview ${m.key}`} size="sm" />
+                          )}
+                        </div>
+                      ))}
                     </div>
-                    {(item.metas || []).length === 0 ? (
-                      <p className="text-xs text-neutral-400">No metas.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {item.metas.map((m, mi) => (
-                          <div key={mi} className="grid grid-cols-[1fr_2fr_auto_auto_auto] gap-2 items-center">
-                            <select
-                              value={m.key}
-                              onChange={e => updateMeta(i, mi, 'key', e.target.value)}
-                              className="px-2 py-1.5 bg-[#faf8f6] border border-neutral-200 rounded text-neutral-800 text-xs"
-                            >
-                              {META_KEYS.map(k => (
-                                <option key={k} value={k}>{k}</option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              value={m.value}
-                              onChange={e => updateMeta(i, mi, 'value', e.target.value)}
-                              placeholder="value (URL or click Upload)"
-                              className="px-2 py-1.5 bg-[#faf8f6] border border-neutral-200 rounded text-neutral-800 text-xs"
-                            />
-                            <UploadButton
-                              folder={`metas/${m.key || 'misc'}`}
-                              accept="image/*"
-                              onUrl={(url) => updateMeta(i, mi, 'value', url)}
-                              title={`Upload meta ${m.key}`}
-                            />
-                            {isPreviewable(m.value) ? (
-                              <UrlPreview url={m.value} onOpen={setPreviewUrl} label="Preview meta" size="sm" />
-                            ) : <span className="w-16" />}
-                            <button type="button" onClick={() => removeMeta(i, mi)} className="text-xs text-red-400 hover:text-red-600 px-2">×</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
