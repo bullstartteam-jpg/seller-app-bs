@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { UrlPreview, PreviewModal } from '../components/Preview';
 import { isPreviewable } from '../utils/drive';
+import UploadButton from '../components/UploadButton';
 import { notify, askConfirm } from '../components/Dialog';
 
 const STATUS_MAP = ['new_order', 'processing', 'wrongsize', 'fixed', 'reprint', 'onhold', 'shipped', 'cancelled'];
@@ -462,9 +463,18 @@ function ItemMetasBlock({ item, onPreview, onSaved }) {
               <input
                 value={form[k]}
                 onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                placeholder="URL (Drive / B2 / direct image) — leave empty to delete"
+                placeholder="URL or click Upload — leave empty to delete"
                 className="flex-1 px-2 py-1 bg-[#faf8f6] border border-neutral-200 rounded text-xs"
               />
+              <UploadButton
+                folder={`metas/${k}`}
+                accept="image/*"
+                title={`Upload ${k} design`}
+                onUrl={(url) => setForm(f => ({ ...f, [k]: url }))}
+              />
+              {isPreviewable(form[k]) && (
+                <UrlPreview url={form[k]} onOpen={onPreview} label={`Preview ${k}`} size="sm" />
+              )}
             </div>
           ))}
           <p className="md:col-span-2 text-[10px] text-neutral-400">
