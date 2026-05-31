@@ -297,8 +297,8 @@ export default function OrderCreate() {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Customer ref */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
-            <label className="text-xs text-neutral-500">Ref ID <span className="text-red-500">*</span></label>
+          <div className="bg-white rounded-xl border border-neutral-200 border-l-4 border-l-amber-400 p-4 shadow-sm">
+            <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5"><span>🧾</span> Ref ID <span className="text-red-500">*</span></label>
             <input
               value={form.ref_id}
               onChange={e => setForm(f => ({ ...f, ref_id: e.target.value }))}
@@ -309,9 +309,9 @@ export default function OrderCreate() {
           </div>
 
           {/* Shipping */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-3 shadow-sm">
+          <div className="bg-white rounded-xl border border-neutral-200 border-l-4 border-l-orange-400 p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-neutral-600">Shipping</h3>
+              <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5"><span>📦</span> Shipping</h3>
               {/* Method selector */}
               <div className="flex gap-1">
                 <button type="button" onClick={() => setForm(f => ({ ...f, method: 'label' }))}
@@ -372,9 +372,9 @@ export default function OrderCreate() {
           </div>
 
           {/* Items */}
-          <div className="bg-white rounded-xl border border-neutral-200 p-4 space-y-3 shadow-sm">
+          <div className="bg-white rounded-xl border border-neutral-200 border-l-4 border-l-blue-400 p-4 space-y-3 shadow-sm">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-semibold text-neutral-600">Items</h3>
+              <h3 className="text-sm font-semibold text-neutral-700 flex items-center gap-1.5"><span>📋</span> Items</h3>
               <button type="button" onClick={addItem} disabled={form.method === 'stamp' && stampQty >= STAMP_MAX} className="text-xs text-orange-500 hover:text-orange-600 disabled:opacity-40 disabled:cursor-not-allowed">+ Add Item</button>
             </div>
             {form.items.map((item, i) => {
@@ -382,14 +382,21 @@ export default function OrderCreate() {
               const accessories = product?.accessories || [];
 
               return (
-                <div key={i} className="border border-neutral-100 rounded-lg p-3 space-y-3">
-                  <div className="grid grid-cols-5 gap-3 items-end">
+                <div key={i} className="border border-neutral-200 rounded-lg p-3 space-y-3 bg-[#fafafa]">
+                  {/* Item header */}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-neutral-700">Item #{i + 1}</h4>
+                    <button type="button" onClick={() => removeItem(i)} className="text-xs text-red-500 hover:text-red-600 px-2 py-1">✕ Remove</button>
+                  </div>
+
+                  {/* Variant + Qty */}
+                  <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-3 items-end">
                     <div>
                       <label className="text-xs text-neutral-500">Product Variant</label>
                       <select
                         value={item.product_variant_id}
                         onChange={e => updateItem(i, { product_variant_id: e.target.value, accessories: [], material_id: defaultMaterialId(e.target.value) })}
-                        className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm"
+                        className="w-full mt-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-neutral-800 text-sm"
                         required
                       >
                         <option value="">Select...</option>
@@ -400,41 +407,37 @@ export default function OrderCreate() {
                     </div>
                     <div>
                       <label className="text-xs text-neutral-500">Qty</label>
-                      <input type="number" min="1" value={item.quantity} onChange={e => updateItem(i, { quantity: e.target.value })} className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                      <input type="number" min="1" value={item.quantity} onChange={e => updateItem(i, { quantity: e.target.value })} className="w-full mt-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
                     </div>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs text-neutral-500">Mockup Front</label>
-                        <UploadButton
-                          folder="mockups"
-                          accept="image/*"
-                          onUrl={(url) => updateItem(i, { mockup_front: url })}
-                          title="Upload mockup front to B2"
-                        />
-                      </div>
-                      <input value={item.mockup_front} onChange={e => updateItem(i, { mockup_front: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
-                      <UrlPreview url={item.mockup_front} onOpen={setPreviewUrl} label="Preview mockup front" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs text-neutral-500">Mockup Back</label>
-                        <UploadButton
-                          folder="mockups"
-                          accept="image/*"
-                          onUrl={(url) => updateItem(i, { mockup_back: url })}
-                          title="Upload mockup back to B2"
-                        />
-                      </div>
-                      <input value={item.mockup_back} onChange={e => updateItem(i, { mockup_back: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
-                      <UrlPreview url={item.mockup_back} onOpen={setPreviewUrl} label="Preview mockup back" />
-                    </div>
-                    <button type="button" onClick={() => removeItem(i)} className="px-3 py-2 text-red-500 hover:text-red-600 text-sm">Remove</button>
                   </div>
 
-                  {/* Material (chất liệu) — default auto-picked when variant chosen */}
+                  {/* 🖼 Mockup */}
+                  <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
+                    <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🖼</span> Mockup</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-neutral-500">Front</label>
+                          <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_front: url })} title="Upload mockup front to B2" />
+                        </div>
+                        <input value={item.mockup_front} onChange={e => updateItem(i, { mockup_front: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                        <UrlPreview url={item.mockup_front} onOpen={setPreviewUrl} label="Preview mockup front" />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-neutral-500">Back</label>
+                          <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_back: url })} title="Upload mockup back to B2" />
+                        </div>
+                        <input value={item.mockup_back} onChange={e => updateItem(i, { mockup_back: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                        <UrlPreview url={item.mockup_back} onOpen={setPreviewUrl} label="Preview mockup back" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 🧶 Material (chất liệu) — default auto-picked when variant chosen */}
                   {materialsOfVariant(item.product_variant_id).length > 0 && (
-                    <div>
-                      <label className="text-xs text-neutral-500">Material (chất liệu)</label>
+                    <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
+                      <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🧶</span> Material (chất liệu)</h5>
                       <select
                         value={item.material_id || ''}
                         onChange={e => updateItem(i, { material_id: e.target.value })}
@@ -452,9 +455,9 @@ export default function OrderCreate() {
                        Add as many as the product supports (different add-ons
                        like envelope + thank-you card on the same item). */}
                   {product && accessories.length > 0 && (
-                    <div className="pt-2 border-t border-neutral-100 space-y-2">
+                    <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs text-neutral-500">Accessories</label>
+                        <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>📎</span> Accessories</h5>
                         <button
                           type="button"
                           onClick={() => addAccessory(i)}
@@ -509,10 +512,10 @@ export default function OrderCreate() {
                     </div>
                   )}
 
-                  {/* Metas */}
-                  <div className="pt-2 border-t border-neutral-100">
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-xs text-neutral-500">Design</label>
+                  {/* 🎨 Design */}
+                  <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🎨</span> Design</h5>
                       <button type="button" onClick={() => addMeta(i)} className="text-xs text-orange-500 hover:text-orange-600">+ Add Design</button>
                     </div>
                     {(item.metas || []).length === 0 ? (
