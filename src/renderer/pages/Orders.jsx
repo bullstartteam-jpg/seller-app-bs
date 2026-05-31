@@ -14,6 +14,15 @@ function orderItemGroups(order) {
     const variantText = pv
       ? `${pv.product?.name || `Variant #${pv.id}`}${pv.color || pv.size ? ` — ${[pv.color, pv.size].filter(Boolean).join('/')}` : ''}`
       : `Item #${it.id}`;
+
+    const materialName = it.material?.name || null;
+    const accSrc = (it.accessory_prices && it.accessory_prices.length) ? it.accessory_prices
+      : (it.accessory_price ? [it.accessory_price] : []);
+    const accessories = accSrc.map(a => ({
+      type: a.accessory?.name || 'Accessory',
+      code: a.accessory_code || a.style || '',
+    }));
+
     const thumbs = [];
     if (it.mockup_front) thumbs.push({ url: it.mockup_front, label: 'mockup front' });
     if (it.mockup_back) thumbs.push({ url: it.mockup_back, label: 'mockup back' });
@@ -23,7 +32,7 @@ function orderItemGroups(order) {
         thumbs.push({ url: m.value, label: `design ${key}` });
       }
     }
-    return { variantText, qty: it.quantity, thumbs };
+    return { variantText, qty: it.quantity, materialName, accessories, thumbs };
   });
 }
 
@@ -443,6 +452,16 @@ export default function Orders() {
                             <div className="text-[11px] text-neutral-600 truncate" title={g.variantText}>
                               {g.variantText}{g.qty ? ` · ×${g.qty}` : ''}
                             </div>
+                            {(g.materialName || g.accessories.length > 0) && (
+                              <div className="flex flex-wrap gap-1 text-[10px]">
+                                {g.materialName && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700" title="Material">🧶 {g.materialName}</span>}
+                                {g.accessories.map((a, ai) => (
+                                  <span key={ai} className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700" title="Accessory">
+                                    {a.type}{a.code ? `: ${a.code}` : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                             <div className="flex items-center gap-1 flex-wrap">
                               {g.thumbs.length === 0 ? (
                                 <span className="text-[10px] text-neutral-300">— no image</span>
