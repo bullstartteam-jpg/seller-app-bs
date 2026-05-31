@@ -3,6 +3,43 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { notify, askConfirm } from '../components/Dialog';
+import { PreviewModal } from '../components/Preview';
+import { driveThumb, isPreviewable } from '../utils/drive';
+
+// Group an order's thumbnails by item so each row shows variant + its
+// designs/mockups together. Data is already eager-loaded by the orders index.
+function orderItemGroups(order) {
+  return (order.items || []).map(it => {
+    const pv = it.product_variant;
+    const variantText = pv
+      ? `${pv.product?.name || `Variant #${pv.id}`}${pv.color || pv.size ? ` — ${[pv.color, pv.size].filter(Boolean).join('/')}` : ''}`
+      : `Item #${it.id}`;
+    const thumbs = [];
+    if (it.mockup_front) thumbs.push({ url: it.mockup_front, label: 'mockup front' });
+    if (it.mockup_back) thumbs.push({ url: it.mockup_back, label: 'mockup back' });
+    for (const m of (it.metas || [])) {
+      const key = m?.key || '';
+      if (m?.value && isPreviewable(m.value) && !/_qr(_[0-9]+)?$/.test(key)) {
+        thumbs.push({ url: m.value, label: `design ${key}` });
+      }
+    }
+    return { variantText, qty: it.quantity, thumbs };
+  });
+}
+
+function OrderThumb({ url, label, onOpen }) {
+  if (!isPreviewable(url)) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpen(url); }}
+      title={label}
+      className="h-9 w-9 rounded border border-neutral-200 bg-neutral-100 overflow-hidden hover:ring-2 hover:ring-orange-400 shrink-0"
+    >
+      <img src={driveThumb(url, 'w200')} alt="" loading="lazy" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+    </button>
+  );
+}
 
 const STATUS_MAP = ['new_order', 'processing', 'wrongsize', 'fixed', 'reprint', 'onhold', 'shipped', 'cancelled'];
 const SELLER_STATUS_OPTIONS = [5, 7]; // onhold, cancelled
@@ -23,6 +60,7 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', date_from: '', date_to: '', page: 1, per_page: 20 });
   const [selected, setSelected] = useState([]);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const { hasPermission, user: authUser } = useAuth();
   const navigate = useNavigate();
 
@@ -366,6 +404,7 @@ export default function Orders() {
               </th>
               <th className="p-3 text-left">System ID</th>
               <th className="p-3 text-left">Ref ID</th>
+              <th className="p-3 text-left">Items</th>
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">Ship Type</th>
               <th className="p-3 text-right">Total</th>
@@ -376,9 +415,9 @@ export default function Orders() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="9" className="p-6 text-center text-neutral-400">Loading...</td></tr>
+              <tr><td colSpan="10" className="p-6 text-center text-neutral-400">Loading...</td></tr>
             ) : orders.length === 0 ? (
-              <tr><td colSpan="9" className="p-6 text-center text-neutral-400">No orders found</td></tr>
+              <tr><td colSpan="10" className="p-6 text-center text-neutral-400">No orders found</td></tr>
             ) : orders.map(order => (
               <tr key={order.id} className="border-b border-neutral-100 hover:bg-orange-50/50 cursor-pointer transition-colors" onClick={() => navigate(`/orders/${order.id}`)}>
                 <td className="p-3" onClick={e => e.stopPropagation()}>
@@ -392,6 +431,33 @@ export default function Orders() {
                       {order.is_duplicate_ref && <span className="ml-1 text-[10px] uppercase tracking-wide">dup</span>}
                     </span>
                   ) : <span className="text-neutral-400">-</span>}
+                </td>
+                <td className="p-3" onClick={e => e.stopPropagation()}>
+                  {(() => {
+                    const groups = orderItemGroups(order);
+                    if (groups.length === 0) return <span className="text-neutral-300 text-xs">—</span>;
+                    return (
+                      <div className="space-y-1.5 max-w-[220px]">
+                        {groups.map((g, gi) => (
+                          <div key={gi} className="space-y-0.5">
+                            <div className="text-[11px] text-neutral-600 truncate" title={g.variantText}>
+                              {g.variantText}{g.qty ? ` · ×${g.qty}` : ''}
+                            </div>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {g.thumbs.length === 0 ? (
+                                <span className="text-[10px] text-neutral-300">— no image</span>
+                              ) : (<>
+                                {g.thumbs.slice(0, 6).map((t, ti) => (
+                                  <OrderThumb key={ti} url={t.url} label={t.label} onOpen={setPreviewUrl} />
+                                ))}
+                                {g.thumbs.length > 6 && <span className="text-[10px] text-neutral-400">+{g.thumbs.length - 6}</span>}
+                              </>)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[order.status]}`}>{STATUS_MAP[order.status]}</span>
@@ -490,6 +556,7 @@ export default function Orders() {
           </div>
         </div>
       )}
+      <PreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />
     </div>
   );
 }
