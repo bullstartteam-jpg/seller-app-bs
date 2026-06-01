@@ -113,7 +113,9 @@ export default function Wallet() {
     e.preventDefault();
     try {
       // Backend forces user_id to the authenticated seller's id when role is seller.
-      await api.post('/wallet/deposit', depositForm);
+      const res = await api.post('/wallet/deposit', depositForm);
+      const amount = Number(depositForm.amount || 0).toFixed(2);
+      notify(`Đã gửi yêu cầu nạp $${amount} — chờ admin duyệt.`, { title: 'Top-up submitted', kind: 'success' });
       setShowDeposit(false);
       setDepositForm({ amount: '', method: '', transaction_id: '', note: '' });
       refreshAll();
