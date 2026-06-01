@@ -67,7 +67,16 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', ref_id: '', system_id: '', date_from: '', date_to: '', page: 1, per_page: 20 });
+  // Restore last filter+page from sessionStorage so navigating into an order
+  // and back keeps the user on the same page they were browsing.
+  const [filters, setFilters] = useState(() => {
+    const def = { status: '', ref_id: '', system_id: '', date_from: '', date_to: '', page: 1, per_page: 20 };
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('orders_filters') || 'null');
+      return saved && typeof saved === 'object' ? { ...def, ...saved } : def;
+    } catch { return def; }
+  });
+  useEffect(() => { sessionStorage.setItem('orders_filters', JSON.stringify(filters)); }, [filters]);
   const [selected, setSelected] = useState([]);
   const [previewUrl, setPreviewUrl] = useState(null);
   const { hasPermission, user: authUser } = useAuth();
