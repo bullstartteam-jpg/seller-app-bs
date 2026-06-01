@@ -34,9 +34,35 @@ export default function Wallet() {
   const [vnpayVnd, setVnpayVnd] = useState('');
   const [vnpayBusy, setVnpayBusy] = useState(false);
 
+  // Bank Transfer (manual / simulated VNPay)
+  const [bankCfg, setBankCfg] = useState(null);
+  const [showBank, setShowBank] = useState(false);
+  const [bankUsd, setBankUsd] = useState('');
+  const [bankBusy, setBankBusy] = useState(false);
+  const [bankResult, setBankResult] = useState(null);
+
   useEffect(() => {
     api.get('/wallet/vnpay/rate').then(res => setVnpayRate(res.data)).catch(() => {});
+    api.get('/wallet/bank-transfer/rate').then(res => setBankCfg(res.data)).catch(() => {});
   }, []);
+
+  const startBank = async (e) => {
+    e?.preventDefault?.();
+    const usd = parseFloat(bankUsd) || 0;
+    if (!bankCfg) return;
+    if (usd < (bankCfg.min_usd || 1)) {
+      return notify(`Tối thiểu $${(bankCfg.min_usd || 1).toFixed(2)}`, { title: 'Bank Transfer', kind: 'error' });
+    }
+    setBankBusy(true);
+    try {
+      const res = await api.post('/wallet/bank-transfer/init', { amount_usd: usd });
+      setBankResult(res.data);
+      refreshAll();
+    } catch (err) {
+      notify(err.response?.data?.message || 'Error', { title: 'Bank Transfer failed', kind: 'error' });
+    } finally { setBankBusy(false); }
+  };
+  const closeBank = () => { setShowBank(false); setBankResult(null); setBankUsd(''); };
 
   const usdPreview = (() => {
     if (!vnpayRate || !vnpayVnd) return 0;
@@ -153,12 +179,15 @@ export default function Wallet() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-neutral-800">Wallet</h2>
         <div className="flex gap-2">
-          <button
-            onClick={() => { setShowVnpay(true); setShowDeposit(false); }}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg"
-          >
-            Deposit qua VNPay
-          </button>
+          {bankCfg?.enabled && (
+            <button
+              onClick={() => { setShowBank(true); setBankResult(null); setShowVnpay(false); setShowDeposit(false); }}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg"
+              title="Nạp qua chuyển khoản ngân hàng (QR)"
+            >
+              Bank Transfer
+            </button>
+          )}
           <button
             onClick={() => { setShowDeposit(!showDeposit); setShowVnpay(false); }}
             className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg"
@@ -375,6 +404,74 @@ export default function Wallet() {
           {Array.from({ length: Math.min(meta.last_page, 10) }, (_, i) => i + 1).map(p => (
             <button key={p} onClick={() => setPage(p)} className={`px-3 py-1 rounded text-sm ${page === p ? 'bg-orange-500 text-white' : 'bg-white border border-neutral-200 text-neutral-600'}`}>{p}</button>
           ))}
+        </div>
+      )}
+
+      {/* Bank Transfer popup */}
+      {showBank && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => !bankBusy && closeBank()}>
+          <div className="bg-white rounded-xl shadow-2xl w-[560px] max-w-full p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-base font-semibold text-neutral-800">Nạp tiền qua chuyển khoản</h3>
+                <p className="text-[11px] text-neutral-500 mt-0.5">
+                  {bankCfg ? `Rate: 1 USD = ${Number(bankCfg.rate).toLocaleString()} ₫ · ${bankCfg.bank_name || 'Bank'}` : 'Loading…'}
+                </p>
+              </div>
+              <button onClick={closeBank} className="text-neutral-400 hover:text-neutral-700 text-xl leading-none">×</button>
+            </div>
+
+            {!bankResult ? (
+              <form onSubmit={startBank} className="space-y-3">
+                <div>
+                  <label className="text-xs text-neutral-500">Số tiền USD muốn nạp</label>
+                  <input type="number" step="0.01" min={bankCfg?.min_usd || 1} value={bankUsd} onChange={e => setBankUsd(e.target.value)} required placeholder="vd 50"
+                    className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-base font-mono" />
+                </div>
+                {bankCfg && bankUsd && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between">
+                    <span className="text-sm text-neutral-600">Cần chuyển khoản</span>
+                    <span className="font-extrabold text-emerald-700 text-2xl tabular-nums">
+                      ₫{Math.round((parseFloat(bankUsd) || 0) * (bankCfg.rate || 0)).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+                <button type="submit" disabled={bankBusy || !bankUsd} className="w-full px-4 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg">
+                  {bankBusy ? 'Đang tạo…' : 'Tiếp tục → hiện QR'}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-center">
+                  {bankResult.qr_url ? (
+                    <img src={bankResult.qr_url} alt="QR" className="h-56 w-56 object-contain border border-neutral-200 rounded" />
+                  ) : (
+                    <div className="h-56 w-56 grid place-items-center text-xs text-neutral-400 border rounded">No QR</div>
+                  )}
+                </div>
+                <div className="text-sm space-y-1 bg-[#faf8f6] rounded-lg p-3 border border-neutral-200">
+                  <div className="flex justify-between"><span className="text-neutral-500">Bank</span><span className="font-medium">{bankResult.bank_name}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500">Số tài khoản</span>
+                    <span className="font-mono select-all">{bankResult.account_no}
+                      <button onClick={() => navigator.clipboard?.writeText(bankResult.account_no)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded text-neutral-600">copy</button>
+                    </span>
+                  </div>
+                  <div className="flex justify-between"><span className="text-neutral-500">Chủ TK</span><span>{bankResult.account_holder}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500">Số tiền</span><span className="font-bold text-emerald-700">₫{Number(bankResult.amount_vnd).toLocaleString()} (${Number(bankResult.amount_usd).toFixed(2)})</span></div>
+                  <div className="flex justify-between items-center"><span className="text-neutral-500">Nội dung</span>
+                    <span>
+                      <code className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono select-all">{bankResult.content}</code>
+                      <button onClick={() => navigator.clipboard?.writeText(bankResult.content)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded text-neutral-600">copy</button>
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  ⚠ Vui lòng <b>điền đúng nội dung</b> khi chuyển khoản. Admin sẽ duyệt sau khi nhận tiền.
+                </p>
+                <button onClick={closeBank} className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg font-medium">Đã chuyển — đóng</button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
