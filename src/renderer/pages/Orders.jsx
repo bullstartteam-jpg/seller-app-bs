@@ -101,6 +101,7 @@ export default function Orders() {
     setLoading(true);
     const params = { page: filters.page, per_page: filters.per_page || 20 };
     if (filters.status !== '') params.status = filters.status;
+    if (filters.ship_type) params.ship_type = filters.ship_type;
     if (filters.ref_id) params.ref_id = filters.ref_id;
     if (filters.system_id) params.system_id = filters.system_id;
     if (filters.date_from) params.date_from = filters.date_from;
@@ -112,7 +113,7 @@ export default function Orders() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchOrders(); refreshUnpaidBanner(); }, [filters.page, filters.status, filters.date_from, filters.date_to, filters.per_page]);
+  useEffect(() => { fetchOrders(); refreshUnpaidBanner(); }, [filters.page, filters.status, filters.ship_type, filters.date_from, filters.date_to, filters.per_page]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -130,6 +131,7 @@ export default function Orders() {
   const handleExport = async () => {
     const params = {};
     if (filters.status !== '') params.status = filters.status;
+    if (filters.ship_type) params.ship_type = filters.ship_type;
     if (filters.ref_id) params.ref_id = filters.ref_id;
     if (filters.system_id) params.system_id = filters.system_id;
     if (filters.date_from) params.date_from = filters.date_from;
@@ -348,6 +350,18 @@ export default function Orders() {
         >
           <option value="">All Status</option>
           {STATUS_MAP.map((s, i) => <option key={i} value={i}>{s}</option>)}
+        </select>
+
+        <select
+          value={filters.ship_type || ''}
+          onChange={e => setFilters(f => ({ ...f, ship_type: e.target.value, page: 1 }))}
+          className="px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-neutral-700 text-sm focus:outline-none"
+          title="Filter by ship type"
+        >
+          <option value="">All Ship Type</option>
+          <option value="tiktok_ship">tiktok_ship</option>
+          <option value="seller_ship">seller_ship</option>
+          <option value="stamp">stamp</option>
         </select>
 
         <div className="flex items-center gap-1 text-sm">
