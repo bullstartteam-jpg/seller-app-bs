@@ -67,12 +67,18 @@ export default function Wallet() {
 
   const submitBankConfirm = async (e) => {
     e?.preventDefault?.();
-    if (!bankResult?.transaction?.id) return;
+    if (!bankResult?.reference) return;
     setBankConfirmBusy(true);
     try {
-      await api.post(`/wallet/bank-transfer/confirm/${bankResult.transaction.id}`, bankConfirm);
+      await api.post('/wallet/bank-transfer/confirm', {
+        reference:  bankResult.reference,
+        amount_usd: bankResult.amount_usd,
+        bank_ref:   bankConfirm.bank_ref,
+        note:       bankConfirm.note,
+      });
       setBankConfirmed(true);
       notify('Đã ghi nhận. Admin sẽ duyệt sau khi nhận được tiền.', { title: 'Top-up', kind: 'success' });
+      refreshAll();
     } catch (err) {
       notify(err.response?.data?.message || 'Confirm failed', { title: 'Bank Transfer', kind: 'error' });
     } finally { setBankConfirmBusy(false); }
