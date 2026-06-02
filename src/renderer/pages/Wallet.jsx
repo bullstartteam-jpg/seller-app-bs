@@ -28,6 +28,55 @@ export default function Wallet() {
   const [editForm, setEditForm] = useState({ amount: '', method: '', transaction_id: '', note: '' });
   const { user: authUser } = useAuth();
 
+  // PingPong wire top-up (USD)
+  const [ppCfg, setPpCfg] = useState(null);
+  const [showPp, setShowPp] = useState(false);
+  const [ppUsd, setPpUsd] = useState('');
+  const [ppBusy, setPpBusy] = useState(false);
+  const [ppResult, setPpResult] = useState(null);
+  const [ppConfirm, setPpConfirm] = useState({ pingpong_ref: '', note: '' });
+  const [ppConfirmBusy, setPpConfirmBusy] = useState(false);
+  const [ppConfirmed, setPpConfirmed] = useState(false);
+
+  useEffect(() => { api.get('/wallet/pingpong/info').then(res => setPpCfg(res.data)).catch(() => {}); }, []);
+
+  const startPp = async (e) => {
+    e?.preventDefault?.();
+    const usd = parseFloat(ppUsd) || 0;
+    if (usd < (ppCfg?.min_usd || 1)) {
+      return notify(`Tối thiểu $${(ppCfg?.min_usd || 1).toFixed(2)}`, { title: 'PingPong', kind: 'error' });
+    }
+    setPpBusy(true);
+    try {
+      const res = await api.post('/wallet/pingpong/init', { amount_usd: usd });
+      setPpResult(res.data);
+    } catch (err) {
+      notify(err.response?.data?.message || 'Error', { title: 'PingPong failed', kind: 'error' });
+    } finally { setPpBusy(false); }
+  };
+  const closePp = () => {
+    setShowPp(false); setPpResult(null); setPpUsd('');
+    setPpConfirm({ pingpong_ref: '', note: '' }); setPpConfirmed(false);
+  };
+  const submitPpConfirm = async (e) => {
+    e?.preventDefault?.();
+    if (!ppResult?.reference) return;
+    setPpConfirmBusy(true);
+    try {
+      await api.post('/wallet/pingpong/confirm', {
+        reference:    ppResult.reference,
+        amount_usd:   ppResult.amount_usd,
+        pingpong_ref: ppConfirm.pingpong_ref,
+        note:         ppConfirm.note,
+      });
+      setPpConfirmed(true);
+      notify('Đã ghi nhận. Admin sẽ duyệt sau khi nhận được tiền.', { title: 'Top-up', kind: 'success' });
+      refreshAll();
+    } catch (err) {
+      notify(err.response?.data?.message || 'Confirm failed', { title: 'PingPong', kind: 'error' });
+    } finally { setPpConfirmBusy(false); }
+  };
+
   // Bank Transfer (manual deposit flow — replaces the legacy VNPay gateway
   // redirect since production VNPay creds aren't live).
   const [bankCfg, setBankCfg] = useState(null);
@@ -164,6 +213,15 @@ export default function Wallet() {
               title="Nạp qua chuyển khoản ngân hàng (QR)"
             >
               Bank Transfer
+            </button>
+          )}
+          {ppCfg?.enabled && (
+            <button
+              onClick={() => { setShowPp(true); setPpResult(null); setShowDeposit(false); }}
+              className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-lg"
+              title="Nạp qua PingPong (USD wire)"
+            >
+              PingPong
             </button>
           )}
           <button
@@ -327,6 +385,80 @@ export default function Wallet() {
           {Array.from({ length: Math.min(meta.last_page, 10) }, (_, i) => i + 1).map(p => (
             <button key={p} onClick={() => setPage(p)} className={`px-3 py-1 rounded text-sm ${page === p ? 'bg-orange-500 text-white' : 'bg-white border border-neutral-200 text-neutral-600'}`}>{p}</button>
           ))}
+        </div>
+      )}
+
+      {/* PingPong wire popup — USD direct, no QR */}
+      {showPp && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => !ppBusy && closePp()}>
+          <div className="bg-white rounded-xl shadow-2xl w-[560px] max-w-full p-5 max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-base font-semibold text-neutral-800">Nạp tiền qua PingPong (USD wire)</h3>
+                <p className="text-[11px] text-neutral-500 mt-0.5">PingPong nhận USD trực tiếp — không có tỷ giá quy đổi.</p>
+              </div>
+              <button onClick={closePp} className="text-neutral-400 hover:text-neutral-700 text-xl leading-none">×</button>
+            </div>
+
+            {!ppResult ? (
+              <form onSubmit={startPp} className="space-y-3">
+                <div>
+                  <label className="text-xs text-neutral-500">Số tiền USD muốn nạp</label>
+                  <input type="number" step="0.01" min={ppCfg?.min_usd || 1} value={ppUsd} onChange={e => setPpUsd(e.target.value)} required placeholder="vd 50"
+                    className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-base font-mono" />
+                </div>
+                <button type="submit" disabled={ppBusy || !ppUsd} className="w-full px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg">
+                  {ppBusy ? 'Đang tạo…' : 'Tiếp tục → hiện account info'}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-sm space-y-1 bg-[#faf8f6] rounded-lg p-3 border border-neutral-200">
+                  <div className="flex justify-between"><span className="text-neutral-500">Account name</span><span className="font-medium">{ppResult.account_name}</span></div>
+                  <div className="flex justify-between"><span className="text-neutral-500">Account no</span>
+                    <span className="font-mono select-all">{ppResult.account_number}
+                      <button onClick={() => navigator.clipboard?.writeText(ppResult.account_number)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded text-neutral-600">copy</button>
+                    </span>
+                  </div>
+                  <div className="flex justify-between"><span className="text-neutral-500">Bank</span><span>{ppResult.bank_name}</span></div>
+                  {ppResult.swift_code && <div className="flex justify-between"><span className="text-neutral-500">SWIFT</span><span className="font-mono">{ppResult.swift_code}</span></div>}
+                  {ppResult.bank_address && <div className="flex justify-between"><span className="text-neutral-500">Bank addr</span><span className="text-right text-xs">{ppResult.bank_address}</span></div>}
+                  <div className="flex justify-between"><span className="text-neutral-500">Số tiền</span><span className="font-bold text-emerald-700">${Number(ppResult.amount_usd).toFixed(2)}</span></div>
+                  <div className="flex justify-between items-center"><span className="text-neutral-500">Reference</span>
+                    <span>
+                      <code className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono select-all">{ppResult.content}</code>
+                      <button onClick={() => navigator.clipboard?.writeText(ppResult.content)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-neutral-100 hover:bg-neutral-200 rounded text-neutral-600">copy</button>
+                    </span>
+                  </div>
+                  {ppResult.notes && <p className="text-[11px] text-neutral-500 pt-2 border-t border-neutral-200">{ppResult.notes}</p>}
+                </div>
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  ⚠ Vui lòng <b>điền đúng reference</b> ở memo của wire — admin dùng để đối chiếu.
+                </p>
+
+                {!ppConfirmed ? (
+                  <form onSubmit={submitPpConfirm} className="space-y-2 border-t border-neutral-100 pt-3">
+                    <p className="text-xs text-neutral-600">Sau khi gửi wire xong, nhập <b>PingPong transaction ID</b> (hoặc số chứng từ) để admin đối soát:</p>
+                    <input value={ppConfirm.pingpong_ref} onChange={e => setPpConfirm(c => ({ ...c, pingpong_ref: e.target.value }))}
+                      placeholder="vd PP123456789" className="w-full px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-sm font-mono" />
+                    <input value={ppConfirm.note} onChange={e => setPpConfirm(c => ({ ...c, note: e.target.value }))}
+                      placeholder="Ghi chú (optional)" className="w-full px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-sm" />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={closePp} className="flex-1 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm rounded-lg">Để sau</button>
+                      <button type="submit" disabled={ppConfirmBusy} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
+                        {ppConfirmBusy ? 'Đang gửi…' : 'Xác nhận đã chuyển'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="border-t border-neutral-100 pt-3 text-center space-y-2">
+                    <p className="text-sm text-emerald-700">✅ Đã ghi nhận. Admin sẽ duyệt sau khi nhận được tiền.</p>
+                    <button onClick={closePp} className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg font-medium">Đóng</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
