@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { notify, askConfirm } from '../components/Dialog';
+import HelpModal from '../components/HelpModal';
 
 const STATUS_BADGE = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -27,6 +28,9 @@ export default function Wallet() {
   const [editingTxId, setEditingTxId] = useState(null);
   const [editForm, setEditForm] = useState({ amount: '', method: '', transaction_id: '', note: '' });
   const { user: authUser } = useAuth();
+
+  // Help modal — surfaces doc/topup-bank-transfer.md inside the seller UI.
+  const [showHelp, setShowHelp] = useState(false);
 
   // PingPong wire top-up (USD)
   const [ppCfg, setPpCfg] = useState(null);
@@ -206,6 +210,13 @@ export default function Wallet() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-neutral-800">Wallet</h2>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowHelp(true)}
+            className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm rounded-lg"
+            title="Mở hướng dẫn nạp tiền"
+          >
+            📘 Hướng dẫn nạp tiền
+          </button>
           {bankCfg?.enabled && (
             <button
               onClick={() => { setShowBank(true); setBankResult(null); setShowDeposit(false); }}
@@ -557,6 +568,8 @@ export default function Wallet() {
           </div>
         </div>
       )}
+
+      <HelpModal slug="topup-guide" title="📘 Hướng dẫn nạp tiền" open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 }
