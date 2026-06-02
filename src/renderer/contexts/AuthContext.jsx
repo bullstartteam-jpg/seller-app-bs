@@ -23,6 +23,17 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // App-side auto-pay cron — runs every minute while this window is open
+  // and the seller has auto_pay=true. POST /orders/auto-pay/run; backend
+  // settles oldest-first unpaid orders against the wallet.
+  useEffect(() => {
+    if (!user?.auto_pay) return;
+    const tick = () => api.post('/orders/auto-pay/run').catch(() => {});
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, [user?.id, user?.auto_pay]);
+
   const login = async (email, password) => {
     const res = await api.post('/login', { email, password });
     const { token, user } = res.data;
