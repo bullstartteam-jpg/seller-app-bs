@@ -62,7 +62,26 @@ export default function Wallet() {
       notify(err.response?.data?.message || 'Error', { title: 'Bank Transfer failed', kind: 'error' });
     } finally { setBankBusy(false); }
   };
-  const closeBank = () => { setShowBank(false); setBankResult(null); setBankUsd(''); };
+  const closeBank = () => {
+    setShowBank(false); setBankResult(null); setBankUsd('');
+    setBankConfirm({ bank_ref: '', note: '' }); setBankConfirmed(false);
+  };
+  const [bankConfirm, setBankConfirm] = useState({ bank_ref: '', note: '' });
+  const [bankConfirmBusy, setBankConfirmBusy] = useState(false);
+  const [bankConfirmed, setBankConfirmed] = useState(false);
+
+  const submitBankConfirm = async (e) => {
+    e?.preventDefault?.();
+    if (!bankResult?.transaction?.id) return;
+    setBankConfirmBusy(true);
+    try {
+      await api.post(`/wallet/bank-transfer/confirm/${bankResult.transaction.id}`, bankConfirm);
+      setBankConfirmed(true);
+      notify('Đã ghi nhận. Admin sẽ duyệt sau khi nhận được tiền.', { title: 'Top-up', kind: 'success' });
+    } catch (err) {
+      notify(err.response?.data?.message || 'Confirm failed', { title: 'Bank Transfer', kind: 'error' });
+    } finally { setBankConfirmBusy(false); }
+  };
 
   const usdPreview = (() => {
     if (!vnpayRate || !vnpayVnd) return 0;
@@ -466,9 +485,37 @@ export default function Wallet() {
                   </div>
                 </div>
                 <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-                  ⚠ Vui lòng <b>điền đúng nội dung</b> khi chuyển khoản. Admin sẽ duyệt sau khi nhận tiền.
+                  ⚠ Vui lòng <b>điền đúng nội dung</b> khi chuyển khoản — admin dùng để đối chiếu.
                 </p>
-                <button onClick={closeBank} className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg font-medium">Đã chuyển — đóng</button>
+
+                {!bankConfirmed ? (
+                  <form onSubmit={submitBankConfirm} className="space-y-2 border-t border-neutral-100 pt-3">
+                    <p className="text-xs text-neutral-600">Sau khi chuyển khoản, nhập <b>mã giao dịch ngân hàng</b> (chứng từ / FT / mã tham chiếu) để admin đối soát nhanh hơn:</p>
+                    <input
+                      value={bankConfirm.bank_ref}
+                      onChange={e => setBankConfirm(c => ({ ...c, bank_ref: e.target.value }))}
+                      placeholder="vd FT26012345678 hoặc mã chứng từ"
+                      className="w-full px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-sm font-mono"
+                    />
+                    <input
+                      value={bankConfirm.note}
+                      onChange={e => setBankConfirm(c => ({ ...c, note: e.target.value }))}
+                      placeholder="Ghi chú (optional)"
+                      className="w-full px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button type="button" onClick={closeBank} className="flex-1 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm rounded-lg">Để sau</button>
+                      <button type="submit" disabled={bankConfirmBusy} className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
+                        {bankConfirmBusy ? 'Đang gửi…' : 'Xác nhận đã chuyển'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="border-t border-neutral-100 pt-3 text-center space-y-2">
+                    <p className="text-sm text-emerald-700">✅ Đã ghi nhận. Admin sẽ duyệt sau khi nhận được tiền.</p>
+                    <button onClick={closeBank} className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg font-medium">Đóng</button>
+                  </div>
+                )}
               </div>
             )}
           </div>
