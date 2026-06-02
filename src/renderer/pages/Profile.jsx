@@ -13,9 +13,20 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
-      setProfileForm({ name: user.name || '', email: user.email || '' });
+      setProfileForm({ name: user.name || '', email: user.email || '', auto_pay: !!user.auto_pay });
     }
   }, [user?.id]);
+
+  const toggleAutoPay = async (next) => {
+    setProfileForm(f => ({ ...f, auto_pay: next }));
+    try {
+      await api.put('/profile', { auto_pay: next });
+      await reloadMe();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating auto-pay');
+      setProfileForm(f => ({ ...f, auto_pay: !next }));
+    }
+  };
 
   const reloadMe = async () => {
     try {
@@ -139,6 +150,30 @@ export default function Profile() {
           className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-sm rounded-lg"
         >{savingProfile ? 'Saving…' : 'Save changes'}</button>
       </form>
+
+      {/* Auto-pay toggle */}
+      <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm space-y-2">
+        <h3 className="text-sm font-semibold text-neutral-700">🤖 Auto-pay</h3>
+        <p className="text-xs text-neutral-500">
+          Khi bật, hệ thống sẽ tự pay các đơn unpaid của bạn theo thứ tự
+          (cũ nhất trước) bằng số dư ví — chạy mỗi phút. Khi ví không đủ
+          cho đơn tiếp theo, auto-pay dừng và đợi bạn nạp thêm.
+        </p>
+        <label className="inline-flex items-center gap-3 mt-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!profileForm.auto_pay}
+            onChange={e => toggleAutoPay(e.target.checked)}
+            className="w-5 h-5 accent-emerald-500"
+          />
+          <span className="text-sm text-neutral-700">
+            Tự động pay đơn unpaid khi ví có tiền
+            {profileForm.auto_pay
+              ? <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">ON</span>
+              : <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">OFF</span>}
+          </span>
+        </label>
+      </div>
 
       {/* Change password */}
       <form onSubmit={handleChangePassword} className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm space-y-3">
