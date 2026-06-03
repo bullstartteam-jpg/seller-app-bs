@@ -13,7 +13,12 @@ export default function Profile() {
 
   useEffect(() => {
     if (user) {
-      setProfileForm({ name: user.name || '', email: user.email || '', auto_pay: !!user.auto_pay });
+      setProfileForm({
+        name: user.name || '',
+        email: user.email || '',
+        auto_pay: !!user.auto_pay,
+        auto_pay_delay_hours: Number.isFinite(user.auto_pay_delay_hours) ? user.auto_pay_delay_hours : 0,
+      });
     }
   }, [user?.id]);
 
@@ -25,6 +30,19 @@ export default function Profile() {
     } catch (err) {
       alert(err.response?.data?.message || 'Error updating auto-pay');
       setProfileForm(f => ({ ...f, auto_pay: !next }));
+    }
+  };
+
+  const saveDelayHours = async (next) => {
+    const clamped = Math.max(0, Math.min(72, Math.floor(Number(next) || 0)));
+    const prev = profileForm.auto_pay_delay_hours ?? 0;
+    setProfileForm(f => ({ ...f, auto_pay_delay_hours: clamped }));
+    try {
+      await api.put('/profile', { auto_pay_delay_hours: clamped });
+      await reloadMe();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating delay');
+      setProfileForm(f => ({ ...f, auto_pay_delay_hours: prev }));
     }
   };
 
@@ -173,6 +191,45 @@ export default function Profile() {
               : <span className="ml-2 text-[11px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500">OFF</span>}
           </span>
         </label>
+
+        {profileForm.auto_pay && (
+          <div className="mt-3 pt-3 border-t border-neutral-100 space-y-2">
+            <div className="text-xs text-neutral-600">
+              Trễ <b>bao lâu</b> kể từ khi đơn tạo thì mới auto-pay
+              <span className="text-neutral-400"> — cho bạn cửa sổ edit/huỷ trước khi tiền rời ví.</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {[0, 1, 2, 3, 4].map(h => {
+                const active = (profileForm.auto_pay_delay_hours ?? 0) === h;
+                return (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => saveDelayHours(h)}
+                    className={`px-3 py-1.5 rounded-lg text-xs border ${
+                      active
+                        ? 'bg-emerald-500 border-emerald-500 text-white'
+                        : 'bg-white border-neutral-200 text-neutral-700 hover:border-emerald-300'
+                    }`}
+                  >
+                    {h === 0 ? 'Ngay' : `${h}h`}
+                  </button>
+                );
+              })}
+              <label className="text-xs text-neutral-500 ml-2">Custom:</label>
+              <input
+                type="number"
+                min="0"
+                max="72"
+                value={profileForm.auto_pay_delay_hours ?? 0}
+                onChange={e => setProfileForm(f => ({ ...f, auto_pay_delay_hours: e.target.value }))}
+                onBlur={e => saveDelayHours(e.target.value)}
+                className="w-20 px-2 py-1 bg-[#faf8f6] border border-neutral-200 rounded text-xs"
+              />
+              <span className="text-xs text-neutral-400">giờ (0-72)</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Change password */}
