@@ -6,7 +6,7 @@ import { isPreviewable } from '../utils/drive';
 import UploadButton from '../components/UploadButton';
 import { notify, askConfirm } from '../components/Dialog';
 
-const STATUS_MAP = ['new_order', 'processing', 'wrongsize', 'fixed', 'reprint', 'onhold', 'shipped', 'cancelled'];
+const STATUS_MAP = ['new_order', 'producing', 'wrongsize', 'fixed', 'reprint', 'onhold', 'shipped', 'cancelled'];
 const SELLER_STATUS_OPTIONS = [5, 7]; // onhold, cancelled
 
 export default function OrderDetail() {
