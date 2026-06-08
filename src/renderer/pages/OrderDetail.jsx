@@ -34,6 +34,7 @@ export default function OrderDetail() {
         shipping_label: res.data.order.shipping_label || '',
         tracking_id: res.data.order.tracking_id || '',
         shipping_cost: res.data.order.shipping_cost ?? '',
+        note: res.data.order.note || '',
       });
     }).finally(() => setLoading(false));
   };
@@ -131,11 +132,21 @@ export default function OrderDetail() {
                 <label className="text-xs text-neutral-500">Shipping Cost</label>
                 <input type="number" step="0.01" value={form.shipping_cost} onChange={e => setForm(f => ({ ...f, shipping_cost: e.target.value }))} className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
               </div>
+              <div>
+                <label className="text-xs text-neutral-500">Note</label>
+                <textarea value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} placeholder="Ghi chú cho đơn (tuỳ chọn)…" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+              </div>
               <button onClick={handleUpdate} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg">Save</button>
             </div>
           ) : (
             <div className="space-y-2 text-sm">
               <Row label="Status" value={STATUS_MAP[order.status]} />
+              {order.note && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Note</span>
+                  <span className="text-neutral-800 font-medium text-right whitespace-pre-wrap">{order.note}</span>
+                </div>
+              )}
               <Row label="Ship Type" value={order.ship_type} />
               <div className="flex justify-between items-center gap-3">
                 <span className="text-neutral-500 text-sm">Shipping Label</span>

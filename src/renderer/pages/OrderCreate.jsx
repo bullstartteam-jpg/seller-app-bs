@@ -45,6 +45,7 @@ export default function OrderCreate() {
   const [form, setForm] = useState({
     method: 'label', // 'label' | 'stamp'
     ref_id: '',
+    note: '',
     shipping_label: '',
     address: {
       first_name: '', last_name: '', address_1: '', address_2: '',
@@ -151,6 +152,7 @@ export default function OrderCreate() {
   const submitOrder = async ({ force = false, rename = false } = {}) => {
     const payload = {
       ref_id: form.ref_id || null,
+      note: form.note || null,
       items: form.items.map(it => {
         const accessoryIds = (it.accessories || [])
           .map(a => Number(a.accessory_item_id))
@@ -312,6 +314,14 @@ export default function OrderCreate() {
               onChange={e => setForm(f => ({ ...f, ref_id: e.target.value }))}
               placeholder="e.g. TikTok order # / your internal ref..."
               required
+              className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm"
+            />
+            <label className="text-xs font-medium text-neutral-700 flex items-center gap-1.5 mt-3"><span>🧾</span> Note</label>
+            <textarea
+              value={form.note}
+              onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+              placeholder="Ghi chú cho đơn (tuỳ chọn)…"
+              rows={2}
               className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm"
             />
           </div>
