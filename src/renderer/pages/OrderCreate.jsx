@@ -8,6 +8,12 @@ import { notify, askConfirm } from '../components/Dialog';
 import UploadButton from '../components/UploadButton';
 
 const META_KEYS = ['front', 'back', 'left', 'right', 'neck', 'special'];
+// Only these design slots are shown in the UI, with these display labels.
+// The underlying meta keys stay 'front'/'back' (backend + converter depend on
+// them); we only change what's rendered. Hidden slots (left/right/neck/special)
+// stay empty in state and are filtered out before submit.
+const VISIBLE_META_KEYS = ['front', 'back'];
+const META_LABELS = { front: 'Outside', back: 'Inside' };
 
 export default function OrderCreate() {
   const navigate = useNavigate();
@@ -546,7 +552,7 @@ export default function OrderCreate() {
                           <label className="text-xs text-neutral-500">Front</label>
                           <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_front: url })} title="Upload mockup front to B2" />
                         </div>
-                        <input value={item.mockup_front} onChange={e => updateItem(i, { mockup_front: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                        <input type="text" value={item.mockup_front} onChange={e => updateItem(i, { mockup_front: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
                         <UrlPreview url={item.mockup_front} onOpen={setPreviewUrl} label="Preview mockup front" />
                       </div>
                       <div>
@@ -554,7 +560,7 @@ export default function OrderCreate() {
                           <label className="text-xs text-neutral-500">Back</label>
                           <UploadButton folder="mockups" accept="image/*" onUrl={(url) => updateItem(i, { mockup_back: url })} title="Upload mockup back to B2" />
                         </div>
-                        <input value={item.mockup_back} onChange={e => updateItem(i, { mockup_back: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
+                        <input type="text" value={item.mockup_back} onChange={e => updateItem(i, { mockup_back: e.target.value })} placeholder="URL or click Upload" className="w-full mt-1 px-3 py-2 bg-[#faf8f6] border border-neutral-200 rounded-lg text-neutral-800 text-sm" />
                         <UrlPreview url={item.mockup_back} onOpen={setPreviewUrl} label="Preview mockup back" />
                       </div>
                     </div>
@@ -564,9 +570,11 @@ export default function OrderCreate() {
                   <div className="rounded-lg border border-neutral-200 bg-white p-3 space-y-2">
                     <h5 className="text-xs font-semibold text-neutral-600 flex items-center gap-1.5"><span>🎨</span> Design</h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {(item.metas || []).map((m, mi) => (
+                      {(item.metas || []).map((m, mi) => ({ m, mi }))
+                        .filter(({ m }) => VISIBLE_META_KEYS.includes(m.key))
+                        .map(({ m, mi }) => (
                         <div key={mi} className="flex items-center gap-2">
-                          <label className="text-xs font-medium text-neutral-500 w-14 capitalize shrink-0">{m.key}</label>
+                          <label className="text-xs font-medium text-neutral-500 w-14 shrink-0">{META_LABELS[m.key]}</label>
                           <input
                             type="text"
                             value={m.value}
